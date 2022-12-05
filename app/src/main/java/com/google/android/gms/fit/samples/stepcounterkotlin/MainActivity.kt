@@ -16,9 +16,11 @@
 package com.google.android.gms.fit.samples.stepcounterkotlin
 
 import android.Manifest
+import android.Manifest.permission.BODY_SENSORS
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.icu.util.TimeUnit
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
@@ -37,7 +39,10 @@ import com.google.android.gms.fitness.Fitness
 import com.google.android.gms.fitness.FitnessOptions
 import com.google.android.gms.fitness.data.DataType
 import com.google.android.gms.fitness.data.Field
+import com.google.android.gms.fitness.request.OnDataPointListener
+import com.google.android.gms.fitness.request.SensorRequest
 import com.google.android.material.snackbar.Snackbar
+import javax.xml.datatype.DatatypeConstants.SECONDS
 
 const val TAG = "StepCounter"
 
@@ -46,9 +51,17 @@ const val TAG = "StepCounter"
  * One of these values is passed to the Fit sign-in, and returned in a successful callback, allowing
  * subsequent execution of the desired action.
  */
+
+
+
 enum class FitActionRequestCode {
     SUBSCRIBE,
-    READ_DATA
+    READ_DATA,
+    //HEART_RATE_READ,
+    //AGGREGATE_HEART_RATE_SUMMARY,
+//    TYPE_HEART_RATE_BPM,
+//    BODY_SENSORS,
+
 }
 
 /**
@@ -57,10 +70,21 @@ enum class FitActionRequestCode {
  * authenticate a user with Google Play Services.
  */
 class MainActivity : AppCompatActivity() {
+
+
     private val fitnessOptions = FitnessOptions.builder()
-            .addDataType(DataType.TYPE_STEP_COUNT_CUMULATIVE)
-            .addDataType(DataType.TYPE_STEP_COUNT_DELTA)
+//            .addDataType(DataType.TYPE_STEP_COUNT_CUMULATIVE)
+//            .addDataType(DataType.TYPE_STEP_COUNT_DELTA)
+            .addDataType(DataType.TYPE_HEART_RATE_BPM)
             .build()
+
+    val listener = OnDataPointListener { dataPoint ->
+        for (field in dataPoint.dataType.fields) {
+            val value = dataPoint.getValue(field)
+            Log.i(TAG, "Detected DataPoint field: ${field.name}")
+            Log.i(TAG, "Detected DataPoint value: $value")
+        }
+    }
 
     private val runningQOrLater =
             android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q
@@ -71,7 +95,22 @@ class MainActivity : AppCompatActivity() {
         // This method sets up our custom logger, which will print all log messages to the device
         // screen, as well as to adb logcat.
         initializeLogging()
-
+//        Fitness.getSensorsClient(this, GoogleSignIn.getAccountForExtension(this, fitnessOptions))
+//            .add(
+//                SensorRequest.Builder()
+//                    .setDataSource(dataSource) // Optional but recommended for custom
+//                    // data sets.
+//                    .setDataType(dataType) // Can't be omitted.
+//                    .setSamplingRate(10, TimeUnit.SECONDS)
+//                    .build(),
+//                listener
+//            )
+//            .addOnSuccessListener {
+//                Log.i(TAG, "Listener registered!")
+//            }
+//            .addOnFailureListener {
+//                Log.e(TAG, "Listener not registered.", task.exception)
+//            }
         checkPermissionsAndRun(FitActionRequestCode.SUBSCRIBE)
     }
 
@@ -127,8 +166,11 @@ class MainActivity : AppCompatActivity() {
      * @param requestCode The code corresponding to the action to perform.
      */
     private fun performActionForRequestCode(requestCode: FitActionRequestCode) = when (requestCode) {
-        FitActionRequestCode.READ_DATA -> readData()
-        FitActionRequestCode.SUBSCRIBE -> subscribe()
+        FitActionRequestCode.READ_DATA -> readHeartRate()
+        FitActionRequestCode.SUBSCRIBE -> heartRateSubscribe()
+//        FitActionRequestCode.TYPE_HEART_RATE_BPM -> heartRateSubscribe()
+//        FitActionRequestCode.BODY_SENSORS -> heartRateSubscribe()
+        //FitActionRequestCode.AGGREGATE_HEART_RATE_SUMMARY -> heartRateSubscribe()
     }
 
     private fun oAuthErrorMsg(requestCode: Int, resultCode: Int) {
@@ -152,37 +194,63 @@ class MainActivity : AppCompatActivity() {
     private fun getGoogleAccount() = GoogleSignIn.getAccountForExtension(this, fitnessOptions)
 
     /** Records step data by requesting a subscription to background step data.  */
-    private fun subscribe() {
+//    private fun subscribe() {
+//        // To create a subscription, invoke the Recording API. As soon as the subscription is
+//        // active, fitness data will start recording.
+//        Fitness.getRecordingClient(this, getGoogleAccount())
+//                .subscribe(DataType.TYPE_STEP_COUNT_CUMULATIVE)
+//                .addOnCompleteListener { task ->
+//                    if (task.isSuccessful) {
+//                        Log.i(TAG, "Successfully subscribed!")
+//                    } else {
+//                        Log.w(TAG, "There was a problem subscribing.", task.exception)
+//                    }
+//                }
+//    }
+    private fun heartRateSubscribe() {
         // To create a subscription, invoke the Recording API. As soon as the subscription is
         // active, fitness data will start recording.
         Fitness.getRecordingClient(this, getGoogleAccount())
-                .subscribe(DataType.TYPE_STEP_COUNT_CUMULATIVE)
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        Log.i(TAG, "Successfully subscribed!")
-                    } else {
-                        Log.w(TAG, "There was a problem subscribing.", task.exception)
-                    }
+            .subscribe(DataType.TYPE_HEART_RATE_BPM)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.i(TAG, "Successfully subscribed!")
+                } else {
+                    Log.w(TAG, "There was a problem subscribing.", task.exception)
                 }
+            }
     }
-
     /**
      * Reads the current daily step total, computed from midnight of the current day on the device's
      * current timezone.
      */
-    private fun readData() {
+//    private fun readData() {
+//        Fitness.getHistoryClient(this, getGoogleAccount())
+//                .readDailyTotal(DataType.TYPE_STEP_COUNT_DELTA)
+//                .addOnSuccessListener { dataSet ->
+//                    val total = when {
+//                        dataSet.isEmpty -> 0
+//                        else -> dataSet.dataPoints.first().getValue(Field.FIELD_STEPS).asInt()
+//                    }
+//                    Log.i(TAG, "Total steps: $total")
+//                }
+//                .addOnFailureListener { e ->
+//                    Log.w(TAG, "There was a problem getting the step count.", e)
+//                }
+//    }
+    private fun readHeartRate() {
         Fitness.getHistoryClient(this, getGoogleAccount())
-                .readDailyTotal(DataType.TYPE_STEP_COUNT_DELTA)
-                .addOnSuccessListener { dataSet ->
-                    val total = when {
-                        dataSet.isEmpty -> 0
-                        else -> dataSet.dataPoints.first().getValue(Field.FIELD_STEPS).asInt()
-                    }
-                    Log.i(TAG, "Total steps: $total")
+            .readDailyTotal(DataType.TYPE_HEART_RATE_BPM)
+            .addOnSuccessListener { dataSet ->
+                val total = when {
+                    dataSet.isEmpty -> 0
+                    else -> dataSet.dataPoints.first().getValue(Field.FIELD_AVERAGE).asInt()
                 }
-                .addOnFailureListener { e ->
-                    Log.w(TAG, "There was a problem getting the step count.", e)
-                }
+                Log.i(TAG, "BPM: $total")
+            }
+            .addOnFailureListener { e ->
+                Log.w(TAG, "There was a problem getting the step count.", e)
+            }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -221,7 +289,7 @@ class MainActivity : AppCompatActivity() {
         val approved = if (runningQOrLater) {
             PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
                     this,
-                    Manifest.permission.ACTIVITY_RECOGNITION)
+                    Manifest.permission.BODY_SENSORS)
         } else {
             true
         }
@@ -230,7 +298,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestRuntimePermissions(requestCode: FitActionRequestCode) {
         val shouldProvideRationale =
-                ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACTIVITY_RECOGNITION)
+                //ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACTIVITY_RECOGNITION)
+        ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.BODY_SENSORS)
 
         // Provide an additional rationale to the user. This would happen if the user denied the
         // request previously, but didn't check the "Don't ask again" checkbox.
@@ -244,7 +313,7 @@ class MainActivity : AppCompatActivity() {
                         .setAction(R.string.ok) {
                             // Request permission
                             ActivityCompat.requestPermissions(this,
-                                    arrayOf(Manifest.permission.ACTIVITY_RECOGNITION),
+                                    arrayOf(Manifest.permission.BODY_SENSORS),
                                     requestCode.ordinal)
                         }
                         .show()
@@ -254,7 +323,7 @@ class MainActivity : AppCompatActivity() {
                 // sets the permission in a given state or the user denied the permission
                 // previously and checked "Never ask again".
                 ActivityCompat.requestPermissions(this,
-                        arrayOf(Manifest.permission.ACTIVITY_RECOGNITION),
+                        arrayOf(Manifest.permission.BODY_SENSORS),
                         requestCode.ordinal)
             }
         }
